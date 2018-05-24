@@ -1,23 +1,47 @@
 class adversarial_validation():
-    def __init__(self, sample_1, sample_2, features, target, id, clf):
+    def __init__(self, sample_1, sample_2, target, id, clf):
         self.sample_1 = sample_1
         self.sample_2 = sample_2
         self.target = target
-        self.features = features
         self.id = id
         self.clf = clf
 
     def check_dist(self):
         import numpy as np
         import pandas as pd
+        from sklearn.preprocessing import LabelBinarizer
         from sklearn.model_selection import StratifiedKFold
         from sklearn.model_selection import cross_val_predict
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.metrics import roc_auc_score
 
+        # Check if variable type
+        categorical_vars =[]
+        numerical_vars=[]
+        for i in list(self.sample_1.drop([self.target, self.id], axis=1)):
+            if self.sample_1[i].dtype == 'O':
+                categorical_vars.append(i)
+            else:
+                numerical_vars.append(i)
+        
+        # One-Hot-Encode categorical variables
+        # Train on sample_1, apply on sample_2
+        for i in categorical_vars:
+            lb_ = LabelBinarizer()
+            lb_.fit(self.sample_1[i]) # Learn encoder on training data
+
+            self.sample_1[lb_.classes_] = pd.DataFrame(lb_.transform(self.sample_1[i]), columns=lb_.classes_)
+            self.sample_2[lb_.classes_] = pd.DataFrame(lb_.transform(self.sample_2[i]), columns=lb_.classes_)
+
+            self.sample_1 = self.sample_1.drop(i, axis=1)
+            self.sample_2 = self.sample_2.drop(i, axis=1)                
+        
+        # Identify features
+        features = [f for f in list(self.sample_1) if f not in [self.target, self.id]]        
+        
         # Split between sample 1 and sample 2 datasets and prepare datasets for training
-        sample_1_check = self.sample_1[self.features + [self.target, self.id]].copy()  # Train dataset
-        sample_2_check = self.sample_2[self.features + [self.target, self.id]].copy()  # Test dataset
+        sample_1_check = self.sample_1[features + [self.target, self.id]].copy()  # Train dataset
+        sample_2_check = self.sample_2[features + [self.target, self.id]].copy()  # Test dataset
 
         # Mark sample_1 observations as 1 and sample_2 observations as 0
         sample_1_check['TARGET_adv'] = 0
