@@ -1,4 +1,4 @@
-def undersample(df, target, odds):
+def undersample(df, target, odds, seed):
     
     """
     Creates a sample of Non-Events from the original table with the given odds, keeping all the target events.
@@ -11,6 +11,8 @@ def undersample(df, target, odds):
         A string with the name of the target variable
     odds : int
         The number corresponding to the odds of Non-Events / Events
+    seed : int
+        Random seed for sampling reproducibility        
 
     
     Attributes:
@@ -33,11 +35,11 @@ def undersample(df, target, odds):
     sample_ratio = (sample_number) / float(df[df[target]==0].shape[0])
 
     class_1 = df[df[target]==1]
-    class_0 = df[df[target]==0].sample(frac=sample_ratio*odds, random_state=97)
+    class_0 = df[df[target]==0].sample(frac=sample_ratio*odds, random_state=seed)
 
     dataset_sampled = class_0.append(class_1, ignore_index=True)
     del class_1, class_0
 
     # Shuffle dataset rows
-    dataset_sampled = dataset_sampled.sample(frac=1, random_state=77).reset_index(drop=True)
+    dataset_sampled = dataset_sampled.sample(frac=1, random_state=seed).reset_index(drop=True)
     return dataset_sampled
