@@ -4,15 +4,8 @@ import matplotlib.pyplot as plt
 
 
 def _get_nulls(df):
-    nulls_dataset = df.copy()
-
-    categorical_vars = []
-    numerical_vars = []
-    for i in nulls_dataset.columns.tolist():
-        if nulls_dataset[i].dtype == 'O':
-            categorical_vars.append(i)
-        else:
-            numerical_vars.append(i)
+    nulls_dataset = df.copy()            
+    numerical_vars = list(nulls_dataset.select_dtypes(include=["int","float"]).columns)
 
     null_class = []
     for i in nulls_dataset[numerical_vars].columns.tolist():
@@ -67,7 +60,7 @@ def get_optimized_bins(df, target_var, id_var, vars_to_bin, min_bin_percent=0.1,
         A float corresponding to the minimum percentage of observations to include in each bin (for numericals only)
     min_bin_percent_low : float (default=0.01)
         A float corresponding to the minimum percentage of observations to include in each bin (for numericals only), 
-        when all the observations get grouped into a single bin an additional drill-down for those variables is necessary        
+        when all the observations get grouped into a single bin an additional drill-down for those variables is necessary       
     get_plots : bool, optional (default=False)
         Whether to plot vars_to_bin or not
     y_axis : string    
@@ -96,14 +89,10 @@ def get_optimized_bins(df, target_var, id_var, vars_to_bin, min_bin_percent=0.1,
     """
 
     # Identify numerical and categorical variables
-    categorical_vars = []
-    numerical_vars = []
-
-    for i in [x for x in vars_to_bin if x not in [target_var, id_var]]:
-        if df[i].dtype == 'O':
-            categorical_vars.append(i)
-        else:
-            numerical_vars.append(i)
+    discard = ["target", "id"]
+    categorical_vars = [x for x in list(df[vars_to_bin].select_dtypes(include="object").columns) if x not in discard]
+    bool_vars = [x for x in list(df[vars_to_bin].select_dtypes(include="bool").columns) if x not in discard]
+    numerical_vars = [x for x in list(df[vars_to_bin].select_dtypes(include=["int","float"]).columns) if x not in discard]
 
     binned_dfs_num = []
     binned_dfs_cat = []
@@ -114,13 +103,12 @@ def get_optimized_bins(df, target_var, id_var, vars_to_bin, min_bin_percent=0.1,
         bin_dataset[i] = bin_dataset[i].replace([np.inf, -np.inf], 0)
 
     # If feature only has missing values, don't analyze it
-    vars_to_bin_no_nulls = [i for i in numerical_vars + categorical_vars if df[i].isnull().sum() != df.shape[0]]
+    vars_to_bin_no_nulls = [i for i in numerical_vars + categorical_vars + bool_vars if df[i].isnull().sum() != df.shape[0]]
 
     for i in vars_to_bin_no_nulls:
             
         # Calculate Bins, different for numerical vs. categorical
-        if i in numerical_vars:
-            
+        if i in numerical_vars:            
             _pre_bins = _optimal_binner(bin_dataset[i],bin_dataset[target_var], min_bin_percent=min_bin_percent)
 
             if type(_pre_bins) == list:
@@ -136,7 +124,10 @@ def get_optimized_bins(df, target_var, id_var, vars_to_bin, min_bin_percent=0.1,
             bin_dataset[i+"_Binned"] = pd.cut(bin_dataset[i], bins=bins, include_lowest=True, retbins=True, precision=1)[0] 
 
         elif i in categorical_vars:
-
+            bin_dataset[i+"_Binned"] = bin_dataset[i].fillna("Missing")
+            
+        elif i in bool_vars:            
+            bin_dataset[i] = bin_dataset[i].astype(int)
             bin_dataset[i+"_Binned"] = bin_dataset[i].fillna("Missing")
 
         # Create grouped table
@@ -214,10 +205,10 @@ def get_optimized_bins(df, target_var, id_var, vars_to_bin, min_bin_percent=0.1,
             if Bins_table[Bins_table["Variable"] == i].shape[0] <= max_classes_plot:
 
                 ax = Bins_table[Bins_table["Variable"] == i][y_axis].plot(alpha=.75,
-                                                                          kind='bar', color="#49b9bc")
+                                                                          kind='bar', color="#FF2000")
                 ax2 = ax.twinx()
                 ax2.plot(ax.get_xticks(), Bins_table[Bins_table["Variable"] == i]["Event Rate"].values, alpha=.75,
-                         color='#d12222')
+                         color='#0C0C0C')
                 ax2.grid(False)
                 ax.set_xlabel('Bins')
                 ax.set_ylabel('Population')

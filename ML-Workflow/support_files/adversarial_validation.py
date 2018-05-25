@@ -13,7 +13,7 @@ class adversarial_validation():
         from sklearn.model_selection import StratifiedKFold
         from sklearn.model_selection import cross_val_predict
         from sklearn.ensemble import RandomForestClassifier
-        from sklearn.metrics import roc_auc_score
+        from sklearn.metrics import roc_auc_score        
 
         # Check if variable type
         categorical_vars =[]
@@ -26,22 +26,26 @@ class adversarial_validation():
         
         # One-Hot-Encode categorical variables
         # Train on sample_1, apply on sample_2
+        
+        sample_1_check = self.sample_1.copy().reset_index(drop=True)
+        sample_2_check = self.sample_2.copy().reset_index(drop=True)
+        
         for i in categorical_vars:
             lb_ = LabelBinarizer()
-            lb_.fit(self.sample_1[i]) # Learn encoder on training data
+            lb_.fit(sample_1_check[i]) # Learn encoder on training data
 
-            self.sample_1[lb_.classes_] = pd.DataFrame(lb_.transform(self.sample_1[i]), columns=lb_.classes_)
-            self.sample_2[lb_.classes_] = pd.DataFrame(lb_.transform(self.sample_2[i]), columns=lb_.classes_)
+            sample_1_check[lb_.classes_] = pd.DataFrame(lb_.transform(sample_1_check[i]), columns=lb_.classes_)
+            sample_2_check[lb_.classes_] = pd.DataFrame(lb_.transform(sample_2_check[i]), columns=lb_.classes_)
 
-            self.sample_1 = self.sample_1.drop(i, axis=1)
-            self.sample_2 = self.sample_2.drop(i, axis=1)                
+            sample_1_check = sample_1_check.drop(i, axis=1)
+            sample_2_check = sample_2_check.drop(i, axis=1)                
         
         # Identify features
-        features = [f for f in list(self.sample_1) if f not in [self.target, self.id]]        
+        features = [f for f in list(sample_1_check) if f not in [self.target, self.id]]        
         
         # Split between sample 1 and sample 2 datasets and prepare datasets for training
-        sample_1_check = self.sample_1[features + [self.target, self.id]].copy()  # Train dataset
-        sample_2_check = self.sample_2[features + [self.target, self.id]].copy()  # Test dataset
+        sample_1_check = sample_1_check[features + [self.target, self.id]]  # Train dataset
+        sample_2_check = sample_2_check[features + [self.target, self.id]]  # Test dataset
 
         # Mark sample_1 observations as 1 and sample_2 observations as 0
         sample_1_check['TARGET_adv'] = 0
@@ -70,7 +74,7 @@ class adversarial_validation():
 
     def get_scored_obs(self, adv_val_set, predictions, get_plot=False):
         import pandas as pd
-        import matplotlib.pyplot as plt
+        import matplotlib.pyplot as plt        
 
         # Sort the sample_1 points by their estimated probability of being sample_2 examples
 
@@ -82,8 +86,8 @@ class adversarial_validation():
 
         # Get plot
         if get_plot:
-            adv_val_set_sorted.prob_being_sample_2.hist()
-            plt.axvline(x=0.5, color="red")
+            adv_val_set_sorted.prob_being_sample_2.hist(color="#FF2000", linewidth=0.5, grid=False)
+            plt.axvline(x=0.5, color='#0C0C0C')
             plt.title("Distribution of probability of being an observation from sample 2")
             plt.show()
 
